@@ -1,7 +1,7 @@
-# forensicVM-Plugins
+# ForensicVM Plugins
 Community forensicVM plugins
 
-# The Community Plugins Project for AutoPy ForensicVM
+# The Community Plugins Project for Autopsy ForensicVM
 
 ## Introduction
 

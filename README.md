@@ -5,7 +5,7 @@ Community forensicVM plugins
 
 ## Introduction
 
-Welcome to the Community Plugins Project - a collaborative platform where we extend the capabilities of the AutosPy ForensicVM project by developing a series of useful plugins. These plugins are designed to enhance the functionality of the ForensicVM, enabling security bypass, program installation, and other tools that forensic investigators find necessary in their routine work. 
+Welcome to the Community Plugins Project - a collaborative platform where we extend the capabilities of the Autospsy ForensicVM project by developing a series of useful plugins. These plugins are designed to enhance the functionality of the ForensicVM, enabling security bypass, program installation, and other tools that forensic investigators find necessary in their routine work. 
 
 ## Project Purpose
 
@@ -19,7 +19,7 @@ We're building a suite of plugins that will provide new and improved features, a
 
 2. **Program Installation**: Want to integrate a new tool into your ForensicVM? Our plugins facilitate smooth program installations, ensuring the tools you need are right at your fingertips.
 
-3. **Tailored Tools**: Our plugins will include a variety of customizable tools designed to cater to the unique needs of forensic investigators. Didn't find a tool that you need? Build it!
+3. **Tailored Tools**: Our plugins will include a variety of customizable tools designed to cater to the unique needs of forensic investigators. Haven't found the tool you need? Build it!
 
 ## Get Involved
 

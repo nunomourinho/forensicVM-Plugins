@@ -25,10 +25,10 @@ We're building a suite of plugins that will provide new and improved features, a
 
 Join the Community Plugins Project and help shape the future of the AutoPy ForensicVM! Whether you're a developer, a forensic investigator, or someone who has an idea to share, we encourage you to contribute to this community-driven initiative. 
 
-```markdown
-- To contribute code, please fork this project
+
+- To contribute code, please fork this project. Then suggest a code merge. If it meets the quality standards it will get merged into the next version.
 - To suggest a plugin or request a feature, open an issue on our [GitHub page](https://github.com/AutoPy-ForensicVM/Community-Plugins-Project/issues)
-```
+
 
 ## Conclusion
 

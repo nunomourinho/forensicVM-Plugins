@@ -1,4 +1,4 @@
-PLUGIN_NAME="Add forensic admin"
+PLUGIN_NAME="Add windows forensic admin"
 PLUGIN_DESCRIPTION="Add a local forensicAdmin named forensicAdmin with the password forensicAdmin"
 OS_NAME="windows"
 OS_VERSION=("xp" "7" "8" "8.1" "10" "11")

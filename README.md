@@ -27,7 +27,7 @@ Join the Community Plugins Project and help shape the future of the AutoPy Foren
 
 
 - To contribute code, please fork this project. Then suggest a code merge. If it meets the quality standards it will get merged into the next version.
-- To suggest a plugin or request a feature, open an issue on our [GitHub page](https://github.com/AutoPy-ForensicVM/Community-Plugins-Project/issues)
+- To suggest a plugin or request a feature, open an issue on our [GitHub page]([https://github.com/AutoPy-ForensicVM/Community-Plugins-Project/issues](https://github.com/nunomourinho/forensicVM-Plugins/issues))
 
 
 ## Conclusion

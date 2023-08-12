@@ -25,15 +25,13 @@ function get_plugin_info() {
 }
 
 function run_plugin() {
-set -e
-guestfile="$1"
+    guestfile="$1"
 
-guestfish --rw -i $guestfile <<'EOF'
-   add-user forensicAdmin
-   password forensicAdmin forensicAdmin
-   usermod -aG sudo forensicAdmin
-   exit
-EOF
+    # Use virt-customize to make modifications
+    virt-customize -a $guestfile \
+        --run-command 'useradd forensicAdmin' \
+        --run-command 'echo forensicAdmin:forensicAdmin | chpasswd' \
+        --run-command 'usermod -aG sudo forensicAdmin'
 }
 
 # Check the first parameter and call the appropriate function
@@ -45,4 +43,3 @@ else
   echo "Invalid parameter. Usage: ./myscript.sh [run|info]"
   exit 1
 fi
-

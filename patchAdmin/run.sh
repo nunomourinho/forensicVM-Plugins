@@ -29,7 +29,6 @@ function get_plugin_info() {
   echo $json
 }
 
-
 function patch_file() {
     SEARCH_OFFSET=$1
     SEARCH_DATA=$2
@@ -52,10 +51,10 @@ function patch_file() {
     fi
 
     # Use dd to check if the SEARCH_DATA exists at the given OFFSET
-    CURRENT_DATA=$(dd if="$TARGET_FILE" bs=1 skip=$((16#$SEARCH_OFFSET)) count=${#SEARCH_DATA} 2>/dev/null)
+    CURRENT_DATA=$(dd if="$EXTRACTED_FILE" bs=1 skip=$((16#$SEARCH_OFFSET)) count=${#SEARCH_DATA} 2>/dev/null)
     if [ "$CURRENT_DATA" == "$SEARCH_DATA" ]; then
         echo "Data matches at offset $SEARCH_OFFSET. Patching..."
-        echo -n "$REPLACE_DATA" | dd of="$TARGET_FILE" bs=1 seek=$((16#$REPLACE_OFFSET)) count=${#REPLACE_DATA} conv=notrunc &>/dev/null
+        echo -n "$REPLACE_DATA" | dd of="$EXTRACTED_FILE" bs=1 seek=$((16#$REPLACE_OFFSET)) count=${#REPLACE_DATA} conv=notrunc &>/dev/null
     else
         echo "Data mismatch at offset $SEARCH_OFFSET. Skipping patch..."
     fi
@@ -63,60 +62,58 @@ function patch_file() {
 
 function patch_dll() {
     while IFS= read -r line; do
-        # Ignore comment lines
-        if [[ "$line" =~ ^#.* ]]; then
+        # Ignore comment lines and empty lines
+        if [[ "$line" =~ ^#.* ]] || [[ -z "$line" ]]; then
             continue
         fi
 
         IFS=',' read -ra CHUNKS <<< "$line"
-        for ((i=0; i<${#CHUNKS[@]}; i+=4)); do
-            SEARCH_OFFSET=${CHUNKS[i]}
-            SEARCH_DATA=${CHUNKS[i+1]}
-            REPLACE_OFFSET=${CHUNKS[i+2]}
-            REPLACE_DATA=${CHUNKS[i+3]}
+        if [[ ${#CHUNKS[@]} -ne 4 ]]; then
+            echo "Error: Malformed line in signature file. Expected 4 values, got ${#CHUNKS[@]}. Skipping..."
+            continue
+        fi
 
-            patch_file "$SEARCH_OFFSET" "$SEARCH_DATA" "$REPLACE_OFFSET" "$REPLACE_DATA"
-        done
+        SEARCH_OFFSET=${CHUNKS[0]}
+        SEARCH_DATA=${CHUNKS[1]}
+        REPLACE_OFFSET=${CHUNKS[2]}
+        REPLACE_DATA=${CHUNKS[3]}
+
+        patch_file "$SEARCH_OFFSET" "$SEARCH_DATA" "$REPLACE_OFFSET" "$REPLACE_DATA"
     done < "$SIGNATURE_FILE"
     echo "Patching complete."
 }
 
-
-
-
 function run_plugin() {
-set -e
+    set -e
 
-/forensicVM/bin/remove-hibernation.sh $1
-guestfile="$1"
+    /forensicVM/bin/remove-hibernation.sh $1
+    guestfile="$1"
 
-mkdir -p $TEMP_DIR
+    mkdir -p $TEMP_DIR
 
-guestfish --rw -i $guestfile <<EOF
-   download $TARGET_FILE_PATH $EXTRACTED_FILE
-   exit
+    guestfish --rw -i $guestfile <<EOF
+       download $TARGET_FILE_PATH $EXTRACTED_FILE
+       exit
 EOF
 
-patch_dll
+    patch_dll
 
-if [ $? -eq 0 ]; then
-  guestfish --rw -i $guestfile <<EOF
-     mv $TARGET_FILE_PATH ${TARGET_FILE_PATH}.original
-     upload $EXTRACTED_FILE $TARGET_FILE_PATH
-     exit
+    guestfish --rw -i $guestfile <<EOF
+         mv $TARGET_FILE_PATH ${TARGET_FILE_PATH}.original
+         upload $EXTRACTED_FILE $TARGET_FILE_PATH
+         exit
 EOF
-fi
 
-rm -rf $TEMP_DIR
+    rm -rf $TEMP_DIR
 }
 
 # Check the first parameter and call the appropriate function
 if [[ "$1" == "run" ]]; then
-  run_plugin $2
+    run_plugin $2
 elif [[ "$1" == "info" ]]; then
-  get_plugin_info
+    get_plugin_info
 else
-  echo "Invalid parameter. Usage: ./run.sh [run|info]"
-  exit 1
+    echo "Invalid parameter. Usage: ./run.sh [run|info]"
+    exit 1
 fi
 

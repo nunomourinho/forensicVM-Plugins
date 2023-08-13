@@ -3,7 +3,7 @@
 PLUGIN_NAME="Bypass windows password - Patch NtlmShared.dll"
 PLUGIN_DESCRIPTION="Patches the NtlmShared.dll to modify its behavior"
 OS_NAME="windows"
-OS_VERSION=("xp" "7" "8" "8.1" "10" "11")
+OS_VERSION=("8" "8.1" "10" "11")
 AUTHOR="Nuno Mourinho"
 VERSION="1.0"
 LICENSE="GPL"
@@ -11,95 +11,88 @@ LICENSE="GPL"
 TEMP_DIR="/tmp/ntlm_patch"
 TARGET_FILE_PATH="/Windows/System32/NtlmShared.dll"
 EXTRACTED_FILE="$TEMP_DIR/NtlmShared.dll"
-SIGNATURE_FILE="unlock-win10.sig"
+SIGNATURE_FILE="pepass.sig"
 
 function get_plugin_info() {
-  # Build JSON object
-  json="{"
-  json+="\"plugin_name\":\"$PLUGIN_NAME\","
-  json+="\"plugin_description\":\"$PLUGIN_DESCRIPTION\","
-  json+="\"os_name\":\"$OS_NAME\","
-  json+="\"os_version\":\"$OS_VERSION\","
-  json+="\"author\":\"$AUTHOR\","
-  json+="\"version\":\"$VERSION\","
-  json+="\"license\":\"$LICENSE\""
-  json+="}"
-
-  # Return JSON object
-  echo $json
+    echo "{\"plugin_name\":\"$PLUGIN_NAME\",\"plugin_description\":\"$PLUGIN_DESCRIPTION\",\"os_name\":\"$OS_NAME\",\"os_version\":\"${OS_VERSION[*]}\",\"author\":\"$AUTHOR\",\"version\":\"$VERSION\",\"license\":\"$LICENSE\"}"
 }
 
-function patch_file() {
-    SEARCH_OFFSET=$1
-    SEARCH_DATA=$2
-    REPLACE_OFFSET=$3
-    REPLACE_DATA=$4
+function patch_binary() {
+    local INPUT_BINARY="$1"
+    local OUTPUT_BINARY="$2"
+    local TEMP_HEX_FILE="${INPUT_BINARY}_temp.hex"
 
-    # Check if any of the inputs are empty
-    if [ -z "$SEARCH_OFFSET" ] || [ -z "$SEARCH_DATA" ] || [ -z "$REPLACE_OFFSET" ] || [ -z "$REPLACE_DATA" ]; then
-        echo "Error: Missing data. Skipping patch..."
-        return 1
-    fi
+    # Convert binary to hex dump
+    xxd -p -c 256 "$INPUT_BINARY" > "$TEMP_HEX_FILE"
 
-    # Convert ASCIIHEX to binary
-    if [[ "$SEARCH_DATA" =~ ^[0-9A-Fa-f]+$ ]]; then
-        SEARCH_DATA=$(echo $SEARCH_DATA | xxd -r -p)
-    fi
+    # Flag to check if any patching was done
+    local PATCHED=0
 
-    if [[ "$REPLACE_DATA" =~ ^[0-9A-Fa-f]+$ ]]; then
-        REPLACE_DATA=$(echo $REPLACE_DATA | xxd -r -p)
-    fi
+    # Read the .sig file and process replacements
+    while IFS=, read -r search_pattern replace_pattern; do
+        # Remove any spaces and convert search pattern to uppercase
+        search_pattern=$(echo "$search_pattern" | tr -d ' ' | tr 'A-F' 'a-f')
+        replace_pattern=$(echo "$replace_pattern" | tr -d ' '| tr 'A-F' 'a-f')
 
-    # Use dd to check if the SEARCH_DATA exists at the given OFFSET
-    CURRENT_DATA=$(dd if="$EXTRACTED_FILE" bs=1 skip=$((16#$SEARCH_OFFSET)) count=${#SEARCH_DATA} 2>/dev/null)
-    if [ "$CURRENT_DATA" == "$SEARCH_DATA" ]; then
-        echo "Data matches at offset $SEARCH_OFFSET. Patching..."
-        echo -n "$REPLACE_DATA" | dd of="$EXTRACTED_FILE" bs=1 seek=$((16#$REPLACE_OFFSET)) count=${#REPLACE_DATA} conv=notrunc &>/dev/null
+        # Use awk for case-insensitive replacement
+        if grep -qi "$search_pattern" "$TEMP_HEX_FILE"; then
+            sed -i "s/$search_pattern/$replace_pattern/g" "$TEMP_HEX_FILE"
+            echo "Pattern $search_pattern found and patched."
+            PATCHED=1
+        fi
+    done < pepass.sig
+
+    # Convert hex dump back to binary
+    xxd -r -p "$TEMP_HEX_FILE" > "$OUTPUT_BINARY"
+
+    # Optional: Clean up the temporary hex file
+    #rm "$TEMP_HEX_FILE"
+
+    if [ "$PATCHED" -eq "1" ]; then
+        echo "Patching complete. The patched file is $OUTPUT_BINARY."
     else
-        echo "Data mismatch at offset $SEARCH_OFFSET. Skipping patch..."
+        echo "No patches applied. Check your patterns or the input file."
     fi
 }
 
-function patch_dll() {
-    while IFS= read -r line; do
-        # Ignore comment lines and empty lines
-        if [[ "$line" =~ ^#.* ]] || [[ -z "$line" ]]; then
-            continue
-        fi
 
-        IFS=',' read -ra CHUNKS <<< "$line"
-        if [[ ${#CHUNKS[@]} -ne 4 ]]; then
-            echo "Error: Malformed line in signature file. Expected 4 values, got ${#CHUNKS[@]}. Skipping..."
-            continue
-        fi
 
-        SEARCH_OFFSET=${CHUNKS[0]}
-        SEARCH_DATA=${CHUNKS[1]}
-        REPLACE_OFFSET=${CHUNKS[2]}
-        REPLACE_DATA=${CHUNKS[3]}
+function backup_dll() {
+    local backup_file="$1.original"
+    local i=1
 
-        patch_file "$SEARCH_OFFSET" "$SEARCH_DATA" "$REPLACE_OFFSET" "$REPLACE_DATA"
-    done < "$SIGNATURE_FILE"
-    echo "Patching complete."
+    while guestfish --ro -i "$guestfile" ls "$backup_file" &>/dev/null; do
+        backup_file="$1.original.$i"
+        ((i++))
+    done
+
+    guestfish --rw -i "$guestfile" <<EOF
+        cp $1 $backup_file
+        exit
+EOF
+
+    echo "Backup created as: $backup_file"
 }
 
 function run_plugin() {
     set -e
 
-    /forensicVM/bin/remove-hibernation.sh $1
+    /forensicVM/bin/remove-hibernation.sh "$1"
     guestfile="$1"
 
     mkdir -p $TEMP_DIR
 
-    guestfish --rw -i $guestfile <<EOF
+    # Check if backup exists and create one if not
+    backup_dll "$TARGET_FILE_PATH"
+
+    guestfish --rw -i "$guestfile" <<EOF
        download $TARGET_FILE_PATH $EXTRACTED_FILE
        exit
 EOF
 
-    patch_dll
+    patch_binary "$EXTRACTED_FILE" "$EXTRACTED_FILE"
 
-    guestfish --rw -i $guestfile <<EOF
-         mv $TARGET_FILE_PATH ${TARGET_FILE_PATH}.original
+    guestfish --rw -i "$guestfile" <<EOF
          upload $EXTRACTED_FILE $TARGET_FILE_PATH
          exit
 EOF
@@ -107,13 +100,12 @@ EOF
     rm -rf $TEMP_DIR
 }
 
-# Check the first parameter and call the appropriate function
 if [[ "$1" == "run" ]]; then
-    run_plugin $2
+    run_plugin "$2"
 elif [[ "$1" == "info" ]]; then
     get_plugin_info
 else
-    echo "Invalid parameter. Usage: ./run.sh [run|info]"
+    echo "Invalid parameter. Usage: $0 [run|info]"
     exit 1
 fi
 

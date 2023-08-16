@@ -40,7 +40,7 @@ function patch_binary() {
             echo "Pattern $search_pattern found and patched."
             PATCHED=1
         fi
-    done < pepass.sig
+    done < /forensicVM/plugins/patchAdmin/pepass.sig
 
     # Convert hex dump back to binary
     xxd -r -p "$TEMP_HEX_FILE" > "$OUTPUT_BINARY"

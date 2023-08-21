@@ -23,7 +23,7 @@ We're building a suite of plugins that will provide new and improved features, a
 
 ## Get Involved
 
-Join the Community Plugins Project and help shape the future of the AutoPy ForensicVM! Whether you're a developer, a forensic investigator, or someone who has an idea to share, we encourage you to contribute to this community-driven initiative. 
+Join the Community Plugins Project and help shape the future of the AutoPsy ForensicVM! Whether you're a developer, a forensic investigator, or someone who has an idea to share, we encourage you to contribute to this community-driven initiative. 
 
 
 - To contribute code, please fork this project. Then suggest a code merge. If it meets the quality standards it will get merged into the next version.
